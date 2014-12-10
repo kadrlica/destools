@@ -2,12 +2,12 @@
 """
 Where you at?
 """
-__author__ = "Alex Drlica-Wagner (kadrlica@fnal.gov)"
+__author__  = "Alex Drlica-Wagner"
+__email__   = "kadrlica@fnal.gov"
 __version__ = "0.0.0"
-__revision__ = ""
 
-import logging
 import sys,os
+import logging
 from collections import OrderedDict as odict
 from datetime import datetime,timedelta,tzinfo
 import dateutil.parser
@@ -66,11 +66,12 @@ CTIO = ephem.Observer()
 CTIO.lon,CTIO.lat = str(TEL_LON),str(TEL_LAT)
 CTIO.elevation = TEL_HEIGHT
 
+# Default maximum number of exposures to grab from DB
 NMAX = 10000
 
+# Stupid timezone definition
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
-
 class UTC(tzinfo):
     """UTC"""
     def utcoffset(self, dt):
@@ -113,39 +114,12 @@ def mjd(datetime):
 
 def lmst(datetime):
     """ Calculate Local Mean Sidereal Time (LMST) """
-    try:
-        ### THIS CAN BE USED IF ASTROPY UPDATED ###
-        import astropy, astropy.time
-        assert (astropy.version.minor >= 4)
-        t = astropy.time.Time(datetime,scale='utc')
-        t.delta_ut1_utc = t.get_delta_ut1_utc(return_status=True)[0]
-        lmst = t.sidereal_time('mean',longitude=TEL_LON).degree
-        logging.debug('Using astropy.time module for LMST: %.3f'%lmst)
-        return lmst
-    except:
-        lmst = np.degrees(CTIO.sidereal_time())
-        logging.debug('Using pyephem for LMST: %.3f'%lmst)
-        return lmst
-        ## http://star-www.rl.ac.uk/docs/sun67.htx/node118.html
-        #from pyslalib import slalib
-        #jd = mjd(utc)
-        #t = slalib.sla_gmst(jd)
-        #lmst = np.degrees(t)+TEL_LON
-        #logging.debug('Using pyslalib for LMST: %.3f'%lmst)
-        #return lmst
+    lmst = np.degrees(CTIO.sidereal_time())
+    logging.debug('Using pyephem for LMST: %.3f'%lmst)
+    return lmst
 
 def moon(datetime):
     """ Moon location """
-    ### from pyslalib import slalib
-    ### lon_rad, lat_rad = np.radians([TEL_LON, TEL_LAT])
-    ### mjd_date = mjd(datetime)
-    ### moon_ra_rad, moon_dec_rad, d = slalib.sla_rdplan(mjd_date, 3, lat_rad, lon_rad)
-    ### moon_ra, moon_dec = np.degrees([moon_ra_rad, moon_dec_rad])
-    ### moon_phase = 0
-    ###  
-    ### print moon_ra,moon_dec
-    ### print moon_phase
-
     moon = ephem.Moon()
     moon.compute(CTIO)
     moon_phase = moon.moon_phase * 100
@@ -153,36 +127,48 @@ def moon(datetime):
     return (moon_ra, moon_dec),moon_phase
 
 
+def boolean(string):
+    """ Convert strings to booleans for argparse """
+    string = string.lower()
+    if string in ['0', 'f', 'false', 'no', 'off']:
+        return False
+    elif string in ['1', 't', 'true', 'yes', 'on']:
+        return True
+    else:
+        raise ValueError()
+
 if __name__ == "__main__":
     import argparse
     description = __doc__
-    parser = argparse.ArgumentParser(description=description)
+    parser = argparse.ArgumentParser(description=description,
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('expnum',nargs='?',type=int,default=None,
-                        help="Exposure number to plot")
+                        help="exposure number to plot")
     parser.add_argument('-a','--airmass',default=1.4,type=float,
-                        help='Airmass to plot')
+                        help='plot airmass limit')
     parser.add_argument('-b','--band',default='all',choices=BANDS,
-                        help='Plot exposures in specific band.')
-    parser.add_argument('-c','--color',default=True,type=bool,
-                        help='Plot exposures in color corresponding to filter.')
+                        help='plot exposures in specific band')
+    parser.add_argument('-c','--color',default=True,type=boolean,
+                        help='plot color corresponding to filter')
     parser.add_argument('-f','--footprint',default='des',choices=['des','none'],
-                        help='Footprint to plot')
+                        help='footprint to plot')
     parser.add_argument('--flavor',default='object',type=str,
-                        help='Exposure flavor [object,flat,etc.]')
+                        help='exposure flavor [object,flat,etc.]')
     parser.add_argument('-i','--infile',default=None,
-                        help='List of exposures to plot')
+                        help='list of exposures to plot')
     parser.add_argument('-o','--outfile',default=None,
-                        help='Output file for saving figure')
-    parser.add_argument('-m','--moon',default=True,type=bool,
-                        help='Plot moon location and phase')
+                        help='output file for saving figure')
+    parser.add_argument('-m','--moon',default=True,type=boolean,
+                        help='plot moon location and phase')
     parser.add_argument('-n','--numexp',default=10,type=int,
-                        help='Number of exposures to plot')
+                        help='number of exposures to plot')
     parser.add_argument('--utc',default=None,
                         help="UTC for plot (defaults to now)")
     parser.add_argument('-v','--verbose',action='store_true',
-                        help='Verbosity')
-    parser.add_argument('-z','--zenith',type=bool,default=True,
-                        help="Plot zenith position")
+                        help='verbosity')
+    parser.add_argument('--version',action='version',version='%(prog)s '+__version__)
+    parser.add_argument('-z','--zenith',default=True,type=boolean,
+                        help="plot zenith position")
 
     opts = parser.parse_args()
 
@@ -194,7 +180,7 @@ if __name__ == "__main__":
     if opts.utc is None:
         utc = datetime.now(tz=UTC())
     else: 
-        utc = dateutil.parser.parse(opts.utc)
+        utc = dateutil.parser.parse(opts.utc,tzinfos={'UTC':UTC})
     logging.debug("UTC: %s"%utc.strftime('%Y-%m-%d %H:%M:%S'))
     CTIO.date = utc
 
@@ -230,7 +216,8 @@ if __name__ == "__main__":
         idx = 0
 
     # Create the figure
-    fig,ax = plt.subplots()
+    fig,ax = plt.subplots(figsize=(12,8))
+    #fig,ax = plt.subplots()
 
     # Create the Basemap
     lon_0 = lmst(utc);     lat_0 = TEL_LAT
@@ -261,12 +248,14 @@ if __name__ == "__main__":
     logging.debug("Plotting last %i exposures"%opts.numexp)
     m.scatter(x[:opts.numexp],y[:opts.numexp],color=color[:opts.numexp],**nexp_kwargs)
 
-    # Plot zenith position
+    # Plot zenith position & focal plane scale
     zen_x,zen_y = m(lon_0,lat_0)
     zen_kwargs = dict(color='green',alpha=0.75,lw=1,zorder=0)
     if opts.zenith:
         logging.debug("Plotting zenith: (%.2f,%.2f)"%(lon_0,lat_0))
         m.plot(zen_x,zen_y,'+',ms=10,**zen_kwargs)
+        logging.debug("Plotting focal plane scale.")
+        m.tissot(lon_0, lat_0, 1.0, 100, fc='none', **zen_kwargs)
     
     # Plot airmass circle
     if not np.isnan(opts.airmass):
@@ -274,20 +263,14 @@ if __name__ == "__main__":
         angle = airmass_angle(opts.airmass)
         m.tissot(lon_0, lat_0, angle, 100, fc='none',**zen_kwargs)
 
-    # DES focal plane size
-    if opts.verbose:
-        logging.debug("Plotting focal plane scale.")
-        m.tissot(lon_0, lat_0, 1.0, 100, fc='none', **zen_kwargs)
-
     # Moon location and phase
     if opts.moon:
         (moon_ra,moon_dec),moon_phase = moon(utc)
         logging.debug("Plotting moon: %i%%,(%.1f,%.1f)"%(moon_phase,moon_ra,moon_dec))
         moon_txt = '%i%%'%moon_phase
-        moon_kwargs = dict(marker='o',fc='none',ec='k',mew=2)
         moon_kwargs = dict(zorder=exp_zorder-1,fontsize=10,va='center',ha='center',
-                           bbox=dict(boxstyle='circle,pad=0.4',fc='k',ec='k',
-                                      alpha=0.25,lw=2))
+                           bbox=dict(boxstyle='circle,pad=0.4',fc='k',ec='k',alpha=0.25,lw=2))
+                                      
         ax.annotate(moon_txt,m(moon_ra,moon_dec),**moon_kwargs)
 
     # Plot footprint(s) (should eventually be a loop over all footprints)
@@ -309,16 +292,11 @@ if __name__ == "__main__":
         sn_kwargs = dict(facecolor='none',edgecolor=ft_kwargs['color'],zorder=exp_zorder-1)
         # Check that point inside boundary
         fact = 0.99
-        boundary = Ellipse((m.rmajor,m.rminor),
-                           2.*(fact*m.rmajor),2.*(fact*m.rminor))
+        boundary = Ellipse((m.rmajor,m.rminor),2*(fact*m.rmajor),2*(fact*m.rminor))
+                           
         for v in SN.values():
             if not boundary.contains_point(m(*v)): continue
             m.tissot(v[0],v[1],1.0,100,**sn_kwargs)
-
-        ### # This doesn't project, but is safe
-        ### sn_kwargs = dict(marker='H',s=50,facecolor='none',edgecolor=ft_kwargs['color'],zorder=exp_zorder-1)
-        ### m.scatter(*m(*zip(*SN.values())),**sn_kwargs)
-        ###     
 
         # The SN labels
         sntxt_kwargs = dict(zorder=exp_zorder-1,fontsize=12,
@@ -327,26 +305,24 @@ if __name__ == "__main__":
         for k,v in SN_LABELS.items():
             ax.annotate(k,m(*v),**sntxt_kwargs)
 
-    # Annotation
+    # Annotate with some information
     logging.debug("Adding info text.")
     bbox_props = dict(boxstyle='round', facecolor='white')
     textstr= "%s %s\n"%("UTC:",utc.strftime('%Y-%m-%d %H:%M:%S'))
     textstr+="%s %i (%s)\n"%("Exposure:",expnum[idx],band[idx])
     textstr+="%s %i\n"%("NExp:",opts.numexp)
-    textstr+="%s (%.1f,%.1f)\n"%("Zenith:",lon_0,lat_0)
+    textstr+="%s (%.1f$^{\circ}$,%.1f$^{\circ}$)\n"%("Zenith:",lon_0,lat_0)
     textstr+="%s %s\n"%("Airmass:",opts.airmass)
-    textstr+="%s %i%% (%.1f,%.1f)\n"%("Moon:",moon_phase,moon_ra,moon_dec)
+    textstr+="%s %i%% (%.1f$^{\circ}$,%.1f$^{\circ}$)\n"%("Moon:",moon_phase,moon_ra,moon_dec)
     textstr+="%s %s"%("Footprint:",opts.footprint)
 
-    ax.annotate(textstr, xy=(0.70,0.95), xycoords='figure fraction',
+    ax.annotate(textstr, xy=(0.98,0.98), xycoords='axes fraction',
                 fontsize=10,ha='left',va='top', bbox=bbox_props)
 
     # Plot filter legend
-    if opts.band != 'none':
+    if opts.color:
         logging.debug("Adding filter legend.")
-        leg_kwargs = dict(scatterpoints=1,fontsize=10,
-                          bbox_to_anchor=(0.28, 0.35),
-                          bbox_transform=plt.gcf().transFigure)
+        leg_kwargs = dict(scatterpoints=1,fontsize=10,bbox_to_anchor=(0.08,0.20))
         handles, labels = [],[]
         for k in FILTERS:
             if k == 'VR' and not (band=='VR').any(): continue
@@ -359,7 +335,4 @@ if __name__ == "__main__":
         logging.debug("Saving figure to: %s"%opts.outfile)
         plt.savefig(opts.outfile)#,bbox_inches='tight')
 
-    plt.ion()
-
-
-
+    plt.show()

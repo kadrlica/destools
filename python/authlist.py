@@ -88,7 +88,7 @@ if __name__ == "__main__":
     affidict = odict()
     authdict = odict()
      
-    if journal2class[opts.journal] == 'revtex':
+    if journal2class[opts.journal.lower()] == 'revtex':
         template = revtex_template
 
         for i,d in enumerate(data):
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         params = dict(defaults,authors=''.join(authors))
         output = template%params
 
-    if journal2class[opts.journal] == 'aastex':
+    if journal2class[opts.journal.lower()] == 'aastex':
         template = aastex_template
          
         for i,d in enumerate(data):

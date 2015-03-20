@@ -19,6 +19,48 @@ journal2class = odict([
     ('aastex','aastex'),
     ('revtex','revtex'),
 ])
+defaults = dict(
+    title = "DES Publication Title",
+    abstract="This list is preliminary; the status is not yet ``ready to submit''.",
+    collaboration="The DES Collaboration"
+)
+
+revtex_template = r"""
+\documentclass[reprint,superscriptaddress]{revtex4-1}
+\pagestyle{empty}
+\begin{document}
+\title{%(title)s}
+ 
+%(authors)s
+
+\collaboration{The DES Collaboration}
+
+\begin{abstract}
+%(abstract)s
+\end{abstract}
+\maketitle
+\end{document}
+"""
+
+aastex_template = r"""
+\documentclass[preprint]{aastex}
+\pagestyle{empty}
+\begin{document}
+\title{%(title)s}
+ 
+\author{
+%(authors)s
+\\ \vspace{0.2cm} (%(collaboration)s) \\
+}
+ 
+%(affiliations)s
+ 
+\begin{abstract}
+%(abstract)s
+\end{abstract}
+\maketitle
+\end{document}
+"""
 
 if __name__ == "__main__":
     import argparse
@@ -35,7 +77,7 @@ if __name__ == "__main__":
     parser.add_argument('-s','--sort',action='store_true',
                         help="Alphabetize the author list (you know you want to...).")
     parser.add_argument('-i','--idx',default=1,type=int,
-                        help="Starting index for aastex author list (useful for mult-collaboration papers, though better to use revtex).")
+                        help="Starting index for aastex author list (useful for mult-collaboration papers; better to use revtex).")
     opts = parser.parse_args()
 
     rows = [r for r in csv.reader(open(opts.infile)) if not r[0].startswith('#')]
@@ -47,22 +89,7 @@ if __name__ == "__main__":
     authdict = odict()
      
     if journal2class[opts.journal] == 'revtex':
-        template = r"""
-\documentclass[reprint,superscriptaddress]{revtex4-1}
-\pagestyle{empty}
-\begin{document}
-\title{DES Publication}
- 
-%(authors)s
-
-\collaboration{The DES Collaboration}
-
-\begin{abstract}
-This list is preliminary; the status is not yet ``ready to submit''
-\end{abstract}
-\section{}
-\end{document}
-        """
+        template = revtex_template
 
         for i,d in enumerate(data):
             if d['Affiliation'] == '': continue
@@ -77,29 +104,11 @@ This list is preliminary; the status is not yet ``ready to submit''
             for v in val:
                 author += r'\affiliation{%s}'%v+'\n'
             authors.append(author)
-        params = dict(authors=''.join(authors))
+        params = dict(defaults,authors=''.join(authors))
         output = template%params
 
     if journal2class[opts.journal] == 'aastex':
-        template = r"""
-\documentclass[preprint]{aastex}
-\pagestyle{empty}
-\begin{document}
-\title{DES Publication}
- 
-\author{
-%(authors)s
-\\ \vspace{0.2cm} (The DES Collaboration) \\
-}
- 
-%(affiliations)s
- 
-\begin{abstract}
-This list is preliminary; the status is not yet ``ready to submit''
-\end{abstract}
-\section{}
-\end{document}
-        """
+        template = aastex_template
          
         for i,d in enumerate(data):
             if d['Affiliation'] == '': continue
@@ -111,7 +120,6 @@ This list is preliminary; the status is not yet ``ready to submit''
                 authdict[d['Authorname']] = [affidx]
             else:
                 authdict[d['Authorname']].append(affidx)
-
          
         affiliations = []
         authors=[]
@@ -123,7 +131,7 @@ This list is preliminary; the status is not yet ``ready to submit''
             affiliation = r'\altaffiltext{%i}{%s}'%(v+opts.idx,k)
             affiliations.append(affiliation)
             
-        params = dict(authors=',\n'.join(authors),affiliations='\n'.join(affiliations))
+        params = dict(defaults,authors=',\n'.join(authors),affiliations='\n'.join(affiliations))
         output = template%params
          
 

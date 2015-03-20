@@ -33,9 +33,9 @@ if __name__ == "__main__":
     parser.add_argument('-j','--journal',default='apj',choices=journal2class.keys(),
                         help="Journal name or latex document class.")
     parser.add_argument('-s','--sort',action='store_true',
-                        help="Alphabetize the author list (come on, you know you want to...).")
+                        help="Alphabetize the author list (you know you want to...).")
     parser.add_argument('-i','--idx',default=1,type=int,
-                        help="Starting index for aastex author list (useful for mult-collaboration papers, though usually better to use revtex if you can)")
+                        help="Starting index for aastex author list (useful for mult-collaboration papers, though better to use revtex).")
     opts = parser.parse_args()
 
     rows = [r for r in csv.reader(open(opts.infile)) if not r[0].startswith('#')]

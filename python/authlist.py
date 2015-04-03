@@ -2,6 +2,12 @@
 """
 A simple script for making latex author lists from the csv file produced by 
 the DES Publication Database.
+
+Some usage notes:
+(1) By default, the script does not tier or sort the author list. The '--sort' option does not respect tiers.
+(2) An exact match is required to group affiliations. This should not be a problem for affiliations provided by the PubDB; however, be careful if you are editing affiliations by hand.
+(3) The script parses in quoted CSV format. Latex umlauts cause a problem (i.e., the Munich affiliation) and must be removed from the CSV file.
+(4) There are some authors in the database with blank affiliations. These need to be corrected by hand in the CSV file.
 """
 __author__ = "Alex Drlica-Wagner"
 __email__ = "kadrlica@fnal.gov"
@@ -12,12 +18,12 @@ import os
 from collections import OrderedDict as odict
 
 journal2class = odict([
+    ('aastex','aastex'),
+    ('revtex','revtex'),
     ('apj','aastex'),
     ('aj','aastex'),
     ('prl','revtex'),
     ('prd','revtex'),
-    ('aastex','aastex'),
-    ('revtex','revtex'),
 ])
 defaults = dict(
     title = "DES Publication Title",

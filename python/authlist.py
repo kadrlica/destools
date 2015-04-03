@@ -92,7 +92,7 @@ if __name__ == "__main__":
         template = revtex_template
 
         for i,d in enumerate(data):
-            if d['Affiliation'] == '': continue
+            #if d['Affiliation'] == '': continue
             if d['Authorname'] not in authdict.keys():
                 authdict[d['Authorname']] = [d['Affiliation']]
             else:
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         template = aastex_template
          
         for i,d in enumerate(data):
-            if d['Affiliation'] == '': continue
+            #if d['Affiliation'] == '': continue
             if (d['Affiliation'] not in affidict.keys()):
                 affidict[d['Affiliation']] = len(affidict.keys())
             affidx = affidict[d['Affiliation']]

@@ -17,6 +17,11 @@ import numpy as np
 import os
 from collections import OrderedDict as odict
 
+
+MUNICH_HACK = odict([
+    ('Ludwig-Maximilians-Universit',r'Department of Physics, Ludwig-Maximilians-Universit\"at, Scheinerstr.\ 1, 81679 M\"unchen, Germany')
+])
+
 journal2class = odict([
     ('aastex','aastex'),
     ('revtex','revtex'),
@@ -93,6 +98,12 @@ if __name__ == "__main__":
 
     affidict = odict()
     authdict = odict()
+
+    # Hack for Munich affiliation...
+    print "WARNING: Hacking umlauts for Munich affiliation..."
+    for k,v in MUNICH_HACK.items():
+        select = (np.char.count(data['Affiliation'],k) > 0)
+        data['Affiliation'][select] = v
      
     if journal2class[opts.journal.lower()] == 'revtex':
         template = revtex_template

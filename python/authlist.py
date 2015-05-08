@@ -17,8 +17,8 @@ import numpy as np
 import os
 from collections import OrderedDict as odict
 
-
-MUNICH_HACK = odict([
+#MUNICH HACK!!!
+HACK = odict([
     ('Ludwig-Maximilians-Universit',r'Department of Physics, Ludwig-Maximilians-Universit\"at, Scheinerstr.\ 1, 81679 M\"unchen, Germany')
 ])
 
@@ -36,15 +36,20 @@ defaults = dict(
     collaboration="The DES Collaboration"
 )
 
-revtex_template = r"""
+### REVTEX ###
+revtex_authlist = r"""
+%(authors)s
+
+\collaboration{The DES Collaboration}
+"""
+
+revtex_document = r"""
 \documentclass[reprint,superscriptaddress]{revtex4-1}
 \pagestyle{empty}
 \begin{document}
 \title{%(title)s}
  
-%(authors)s
-
-\collaboration{The DES Collaboration}
+%(authlist)s
 
 \begin{abstract}
 %(abstract)s
@@ -53,18 +58,23 @@ revtex_template = r"""
 \end{document}
 """
 
-aastex_template = r"""
-\documentclass[preprint]{aastex}
-\pagestyle{empty}
-\begin{document}
-\title{%(title)s}
- 
+### AASTEX ###
+aastex_authlist = r"""
 \author{
 %(authors)s
 \\ \vspace{0.2cm} (%(collaboration)s) \\
 }
  
 %(affiliations)s
+"""
+
+aastex_document = r"""
+\documentclass[preprint]{aastex}
+\pagestyle{empty}
+\begin{document}
+\title{%(title)s}
+ 
+%(authlist)s
  
 \begin{abstract}
 %(abstract)s
@@ -81,6 +91,10 @@ if __name__ == "__main__":
                         help="Input csv file from DES PubDB")
     parser.add_argument('outfile',metavar='DES-XXXX-XXXX_author_list.tex',
                         nargs='?',default=None,help="Output latex file (optional).")
+    parser.add_argument('-a','--aux',metavar='order.txt',
+                        help="Auxiliary author ordering file.")
+    parser.add_argument('-d','--doc',action='store_true',
+                        help="Create standalone latex document.")
     parser.add_argument('-f','--force',action='store_true',
                         help="Force overwrite of output.")
     parser.add_argument('-j','--journal',default='apj',choices=journal2class.keys(),
@@ -100,16 +114,32 @@ if __name__ == "__main__":
     authdict = odict()
 
     # Hack for Munich affiliation...
-    print "WARNING: Hacking umlauts for Munich affiliation..."
-    for k,v in MUNICH_HACK.items():
+    print "% WARNING: Hacking umlauts for Munich affiliation..."
+    for k,v in HACK.items():
         select = (np.char.count(data['Affiliation'],k) > 0)
         data['Affiliation'][select] = v
-     
+
+    # Pre-sort the csv file by the auxiliary file
+    if opts.aux is not None:
+        aux = np.loadtxt(opts.aux,dtype=object)
+        raw = np.array(zip(data['Lastname'],range(len(data))))
+        order = np.empty((0,2),dtype=raw.dtype)
+        for n in aux:
+            match = (raw[:,0] == n)
+            if not np.any(match):
+                print "%% WARNING: Auxiliary name %s not found"%n
+            order = np.vstack([order,raw[match]])
+            raw = raw[~match]
+        order = np.vstack([order,raw])
+        data = data[order[:,1].astype(int)]
+                    
     if journal2class[opts.journal.lower()] == 'revtex':
-        template = revtex_template
+        document = revtex_document
+        authlist = revtex_authlist
 
         for i,d in enumerate(data):
-            #if d['Affiliation'] == '': continue
+            if d['Affiliation'] == '': 
+                print "%% WARNING: Blank affiliation for %s"%d['Authorname']
             if d['Authorname'] not in authdict.keys():
                 authdict[d['Authorname']] = [d['Affiliation']]
             else:
@@ -122,13 +152,20 @@ if __name__ == "__main__":
                 author += r'\affiliation{%s}'%v+'\n'
             authors.append(author)
         params = dict(defaults,authors=''.join(authors))
-        output = template%params
+        if opts.doc:
+            params['authlist'] = authlist%params
+            output = document%params
+        else:
+            output = authlist%params
+        #output = template%params
 
     if journal2class[opts.journal.lower()] == 'aastex':
-        template = aastex_template
-         
+        document = aastex_document
+        authlist = aastex_authlist
+
         for i,d in enumerate(data):
-            #if d['Affiliation'] == '': continue
+            if d['Affiliation'] == '': 
+                print "%% WARNING: Blank affiliation for %s"%d['Authorname']
             if (d['Affiliation'] not in affidict.keys()):
                 affidict[d['Affiliation']] = len(affidict.keys())
             affidx = affidict[d['Affiliation']]
@@ -149,14 +186,19 @@ if __name__ == "__main__":
             affiliations.append(affiliation)
             
         params = dict(defaults,authors=',\n'.join(authors),affiliations='\n'.join(affiliations))
-        output = template%params
-         
+        if opts.doc:
+            params['authlist'] = authlist%params
+            output = document%params
+        else:
+            output = authlist%params
 
-    if opts.outfile is not None:
-        outfile = opts.outfile
+        #output = template%params
+         
+    if opts.outfile is None:
+        print output
     else:
-        outfile = opts.infile.replace('.csv','.tex')
-    if os.path.exists(outfile) and not opts.force:
-        print "Found %s; skipping..."%outfile
-    out = open(outfile,'w')
-    out.write(output)
+        outfile = opts.outfile
+        if os.path.exists(outfile) and not opts.force:
+            print "Found %s; skipping..."%outfile
+        out = open(outfile,'w')
+        out.write(output)

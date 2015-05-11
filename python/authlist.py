@@ -40,7 +40,7 @@ defaults = dict(
 revtex_authlist = r"""
 %(authors)s
 
-\collaboration{The DES Collaboration}
+\collaboration{%(collaboration)s}
 """
 
 revtex_document = r"""

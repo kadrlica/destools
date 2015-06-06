@@ -29,6 +29,7 @@ journal2class = odict([
     ('aj','aastex'),
     ('prl','revtex'),
     ('prd','revtex'),
+    ('mnras','mnras'),
 ])
 defaults = dict(
     title = "DES Publication Title",
@@ -83,6 +84,39 @@ aastex_document = r"""
 \end{document}
 """
 
+### MNRAS ###
+mnras_authlist = r"""
+\author[%(collaboration)s]{
+\parbox{\textwidth}{
+\Large
+%(authors)s
+\begin{center} (%(collaboration)s) \end{center}
+}
+\vspace{0.4cm}
+\\
+\parbox{\textwidth}{
+%%\scriptsize
+%(affiliations)s
+}
+}
+"""
+
+mnras_document = r"""
+\documentclass{mnras}
+\pagestyle{empty}
+\begin{document}
+\title{%(title)s}
+ 
+%(authlist)s
+ 
+\maketitle
+\begin{abstract}
+%(abstract)s
+\end{abstract}
+
+\end{document}
+"""
+
 if __name__ == "__main__":
     import argparse
     description = __doc__
@@ -92,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument('outfile',metavar='DES-XXXX-XXXX_author_list.tex',
                         nargs='?',default=None,help="Output latex file (optional).")
     parser.add_argument('-a','--aux',metavar='order.txt',
-                        help="Auxiliary author ordering file.")
+                        help="Auxiliary author ordering file (one lastname per line).")
     parser.add_argument('-d','--doc',action='store_true',
                         help="Create standalone latex document.")
     parser.add_argument('-f','--force',action='store_true',
@@ -110,6 +144,7 @@ if __name__ == "__main__":
 
     if opts.sort: data = data[np.argsort(np.char.upper(data['Lastname']))]
 
+    cls = journal2class[opts.journal.lower()]
     affidict = odict()
     authdict = odict()
 
@@ -133,7 +168,7 @@ if __name__ == "__main__":
         order = np.vstack([order,raw])
         data = data[order[:,1].astype(int)]
                     
-    if journal2class[opts.journal.lower()] == 'revtex':
+    if cls in ['revtex']:
         document = revtex_document
         authlist = revtex_authlist
 
@@ -159,10 +194,21 @@ if __name__ == "__main__":
             output = authlist%params
         #output = template%params
 
-    if journal2class[opts.journal.lower()] == 'aastex':
-        document = aastex_document
-        authlist = aastex_authlist
-
+    if cls in ['aastex','mnras']:
+        if cls == 'aastex':
+            document = aastex_document
+            authlist = aastex_authlist
+            affilmark = r'\altaffilmark{%s},'
+            affiltext = r'\altaffiltext{%i}{%s}'
+        elif cls == 'mnras':
+            document = mnras_document
+            authlist = mnras_authlist
+            affilmark = r'$^{%s}$,'
+            affiltext = r'$^{%i}$ %s\\'
+        else:
+            msg = "Unrecognized LaTex class: %s"%cls
+            raise Exception(msg)
+            
         for i,d in enumerate(data):
             if d['Affiliation'] == '': 
                 print "%% WARNING: Blank affiliation for %s"%d['Authorname']
@@ -178,14 +224,14 @@ if __name__ == "__main__":
         affiliations = []
         authors=[]
         for k,v in authdict.items():
-            author = k+r'\altaffilmark{'+','.join([str(_v+opts.idx) for _v in v])+'}'
+            author = k+affilmark%(','.join([str(_v+opts.idx) for _v in v]))
             authors.append(author)
          
         for k,v in affidict.items():
-            affiliation = r'\altaffiltext{%i}{%s}'%(v+opts.idx,k)
+            affiliation = affiltext%(v+opts.idx,k)
             affiliations.append(affiliation)
             
-        params = dict(defaults,authors=',\n'.join(authors),affiliations='\n'.join(affiliations))
+        params = dict(defaults,authors='\n'.join(authors).strip(','),affiliations='\n'.join(affiliations))
         if opts.doc:
             params['authlist'] = authlist%params
             output = document%params

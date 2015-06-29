@@ -19,7 +19,7 @@ from collections import OrderedDict as odict
 
 #MUNICH HACK!!!
 HACK = odict([
-    ('Ludwig-Maximilians-Universit',r'Department of Physics, Ludwig-Maximilians-Universit\"at, Scheinerstr.\ 1, 81679 M\"unchen, Germany')
+    #('Ludwig-Maximilians-Universit',r'Department of Physics, Ludwig-Maximilians-Universit\"at, Scheinerstr.\ 1, 81679 M\"unchen, Germany')
 ])
 
 journal2class = odict([
@@ -139,7 +139,9 @@ if __name__ == "__main__":
                         help="Starting index for aastex author list (useful for mult-collaboration papers; better to use revtex).")
     opts = parser.parse_args()
 
-    rows = [r for r in csv.reader(open(opts.infile)) if not r[0].startswith('#')]
+    # Replace umlauts to make valid CSV file
+    lines = [l.replace(r'\"',r'\""') for l in open(opts.infile).readlines()]
+    rows = [r for r in csv.reader(lines) if not r[0].startswith('#')]
     data = np.rec.fromrecords(rows[1:],names=rows[0])
 
     if opts.sort: data = data[np.argsort(np.char.upper(data['Lastname']))]
@@ -149,8 +151,8 @@ if __name__ == "__main__":
     authdict = odict()
 
     # Hack for Munich affiliation...
-    print "% WARNING: Hacking umlauts for Munich affiliation..."
     for k,v in HACK.items():
+        print "% WARNING: Hacking '%s' ..."%k
         select = (np.char.count(data['Affiliation'],k) > 0)
         data['Affiliation'][select] = v
 

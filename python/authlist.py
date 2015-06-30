@@ -22,6 +22,33 @@ HACK = odict([
     #('Ludwig-Maximilians-Universit',r'Department of Physics, Ludwig-Maximilians-Universit\"at, Scheinerstr.\ 1, 81679 M\"unchen, Germany')
 ])
 
+def hack_alphabetic(data,name='da Costa'):
+    """ 
+    Hack the alphabetic ordering to deal with lowercase 'da Costa'
+    This is ugly, terrible, and embarrasing... blame Klaus.
+    """
+    idx = data['Lastname'] == name
+    hack  = np.sum(idx) > 0
+    hack &= (idx[-1] == True)
+    hack &= (data['JoinedAsBuilder'][idx] == 'True').all()
+    if hack:
+        print "%% WARNING: Hacking alphabetic order for '%s'"%name
+        entry = data[idx]
+        new = np.delete(data,np.where(idx))
+        # Count backward to try to be robust against resorted lists...
+        for i,d in enumerate(new[::-1]):
+            if d['JoinedAsBuilder'] != 'True': continue
+            if d['Lastname'].upper() < name.upper():
+                new = np.insert(new,len(new)-i,entry)
+                break
+
+        if len(new) != len(data):
+            msg = "%% ERROR: Failed to hack '%s'"%name
+            raise Exception(msg)
+
+        return new
+    return data
+
 journal2class = odict([
     ('aastex','aastex'),
     ('revtex','revtex'),
@@ -139,12 +166,16 @@ if __name__ == "__main__":
                         help="Starting index for aastex author list (useful for mult-collaboration papers; better to use revtex).")
     opts = parser.parse_args()
 
-    # Replace umlauts to make valid CSV file
+    # FIXME: Replace umlauts to make valid CSV file
+    print "% WARNING: Hacking umlaut escape sequence"
     lines = [l.replace(r'\"',r'\""') for l in open(opts.infile).readlines()]
     rows = [r for r in csv.reader(lines) if not r[0].startswith('#')]
     data = np.rec.fromrecords(rows[1:],names=rows[0])
 
     if opts.sort: data = data[np.argsort(np.char.upper(data['Lastname']))]
+
+    # FIXME: Blame Klaus.
+    data = hack_alphabetic(data, 'da Costa')
 
     cls = journal2class[opts.journal.lower()]
     affidict = odict()
@@ -176,7 +207,7 @@ if __name__ == "__main__":
 
         for i,d in enumerate(data):
             if d['Affiliation'] == '': 
-                print "%% WARNING: Blank affiliation for %s"%d['Authorname']
+                print "%% WARNING: Blank affiliation for '%s'"%d['Authorname']
             if d['Authorname'] not in authdict.keys():
                 authdict[d['Authorname']] = [d['Affiliation']]
             else:
@@ -213,7 +244,7 @@ if __name__ == "__main__":
             
         for i,d in enumerate(data):
             if d['Affiliation'] == '': 
-                print "%% WARNING: Blank affiliation for %s"%d['Authorname']
+                print "%% WARNING: Blank affiliation for '%s'"%d['Authorname']
             if (d['Affiliation'] not in affidict.keys()):
                 affidict[d['Affiliation']] = len(affidict.keys())
             affidx = affidict[d['Affiliation']]

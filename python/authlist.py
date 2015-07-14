@@ -169,6 +169,8 @@ if __name__ == "__main__":
     # FIXME: Replace umlauts to make valid CSV file
     print "% WARNING: Hacking umlaut escape sequence"
     lines = [l.replace(r'\"',r'\""') for l in open(opts.infile).readlines()]
+    # Things are fixed now... but we still need to deal with old files.
+    lines = [l.replace(r'\"""',r'\""') for l in lines] 
     rows = [r for r in csv.reader(lines) if not r[0].startswith('#')]
     data = np.rec.fromrecords(rows[1:],names=rows[0])
 

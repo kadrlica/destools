@@ -33,6 +33,13 @@ def hack_alphabetic(data,name='da Costa'):
     hack &= (data['JoinedAsBuilder'][idx] == 'True').all()
     if hack:
         print "%% WARNING: Hacking alphabetic order for '%s'"%name
+
+        # Older versions of numpy have problems inserting multiple rows...
+        if int(np.__version__.replace('.','')) <= 161:
+            msg = "% WARNING: Alphabetic hack only works with numpy > 1.6.1"
+            print msg
+            #raise Exception(msg)
+
         entry = data[idx]
         new = np.delete(data,np.where(idx))
         # Count backward to try to be robust against resorted lists...

@@ -205,6 +205,15 @@ if __name__ == "__main__":
             match = (raw[:,0] == n)
             if not np.any(match):
                 print "%% WARNING: Auxiliary name %s not found"%n
+                continue
+
+            # Should allow first names in aux file...
+            firstnames = np.unique(data['Firstname'][data['Lastname']==n])
+            if not len(firstnames) == 1:
+                print '%% ERROR: Non-unique last name; order by hand.'
+                for f in firstnames:
+                    print f, n
+                raise Exception()
             order = np.vstack([order,raw[match]])
             raw = raw[~match]
         order = np.vstack([order,raw])

@@ -226,6 +226,9 @@ if __name__ == "__main__":
         for i,d in enumerate(data):
             if d['Affiliation'] == '': 
                 print "%% WARNING: Blank affiliation for '%s'"%d['Authorname']
+            if d['Authorname'] == '': 
+                print "%% WARNING: Blank authorname for '%s %s'"%(d['Firstname'],d['Lastname'])
+
             if d['Authorname'] not in authdict.keys():
                 authdict[d['Authorname']] = [d['Affiliation']]
             else:
@@ -263,6 +266,9 @@ if __name__ == "__main__":
         for i,d in enumerate(data):
             if d['Affiliation'] == '': 
                 print "%% WARNING: Blank affiliation for '%s'"%d['Authorname']
+            if d['Authorname'] == '': 
+                print "%% WARNING: Blank authorname for '%s %s'"%(d['Firstname'],d['Lastname'])
+
             if (d['Affiliation'] not in affidict.keys()):
                 affidict[d['Affiliation']] = len(affidict.keys())
             affidx = affidict[d['Affiliation']]

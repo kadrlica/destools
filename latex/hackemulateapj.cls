@@ -163,11 +163,9 @@
 
 %ADW: Modified for large collaboration author lists
 \if@two@col
-  %\LoadClass[twocolumn,nofootinbib,showkeys,twoside,floatfix,unsortedaddress,flushbottom,10pt,aps,pra]{\@revtex@cls}
   \LoadClass[twocolumn,nofootinbib,showkeys,twoside,floatfix,unsortedaddress,flushbottom,10pt,aps,pra,superscriptaddress]{\@revtex@cls}
 \else
-  %\LoadClass[nofootinbib,showkeys,twoside,floatfix,unsortedaddress,flushbottom,notitlepage,10pt,aps,pra]{\@revtex@cls}
-\LoadClass[nofootinbib,showkeys,twoside,floatfix,unsortedaddress,flushbottom,notitlepage,10pt,aps,pra,superscriptaddress]{\@revtex@cls}
+  \LoadClass[nofootinbib,showkeys,twoside,floatfix,unsortedaddress,flushbottom,notitlepage,10pt,aps,pra,superscriptaddress]{\@revtex@cls}
 \fi
 \def\blankaffiliation{~}%
 
@@ -404,7 +402,6 @@
 \footnotesize
 {\footnotesize\textsc{\@journalinfo}}\par
 {\scriptsize Preprint typeset using \LaTeX\ style emulateapj v.\
-%  \emulapj@ver}\par\vspace*{-\baselineskip}\vspace*{0.625in}
   \emulapj@ver}\par\vspace*{-\baselineskip}\vspace*{0.4in}
 }%
 \def\frontmatter@title@produce{%
@@ -1894,7 +1891,5 @@
 %%          \lt@expand@linewidth@ twice before passing into longtable
 %%
 %% 01/23/15 \apjl with the iop option expands to ApJL
-%%
-%% 03/22/15 ADW: Hacked revtex options to deal better with long author lists
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

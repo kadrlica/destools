@@ -25,7 +25,7 @@ HACK = odict([
 def hack_alphabetic(data,name='da Costa'):
     """ 
     Hack the alphabetic ordering to deal with lowercase 'da Costa'
-    This is ugly, terrible, and embarrasing... blame Klaus.
+    This is terrible and should be fixed at the DB level.
     """
     idx = data['Lastname'] == name
     hack  = np.sum(idx) > 0
@@ -174,16 +174,18 @@ if __name__ == "__main__":
     opts = parser.parse_args()
 
     # FIXME: Replace umlauts to make valid CSV file
+    # Things are fixed now... but we need to deal with old files.
     print "% WARNING: Hacking umlaut escape sequence"
+    # Replace the bad CSV formatting in old files
     lines = [l.replace(r'\"',r'\""') for l in open(opts.infile).readlines()]
-    # Things are fixed now... but we still need to deal with old files.
+    # Now fix the new files that we just broke with the previous line
     lines = [l.replace(r'\"""',r'\""') for l in lines] 
     rows = [r for r in csv.reader(lines) if not r[0].startswith('#')]
     data = np.rec.fromrecords(rows[1:],names=rows[0])
 
     if opts.sort: data = data[np.argsort(np.char.upper(data['Lastname']))]
 
-    # FIXME: Blame Klaus.
+    # FIXME: Is this still necessary?
     data = hack_alphabetic(data, 'da Costa')
 
     cls = journal2class[opts.journal.lower()]

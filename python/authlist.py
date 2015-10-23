@@ -159,7 +159,7 @@ if __name__ == "__main__":
                         help="Input csv file from DES PubDB")
     parser.add_argument('outfile',metavar='DES-XXXX-XXXX_author_list.tex',
                         nargs='?',default=None,help="Output latex file (optional).")
-    parser.add_argument('-a','--aux',metavar='order.txt',
+    parser.add_argument('-a','--aux',metavar='order.csv',
                         help="Auxiliary author ordering file (one lastname per line).")
     parser.add_argument('-d','--doc',action='store_true',
                         help="Create standalone latex document.")
@@ -198,17 +198,18 @@ if __name__ == "__main__":
 
     # Pre-sort the csv file by the auxiliary file
     if opts.aux is not None:
-        aux = np.loadtxt(opts.aux,dtype=object)
+        aux = [r for r in csv.DictReader(open(opts.aux),['Lastname','Firstname'])]
         raw = np.array(zip(data['Lastname'],range(len(data))))
         order = np.empty((0,2),dtype=raw.dtype)
-        for n in aux:
-            match = (raw[:,0] == n)
+        for r in aux:
+            lastname = r['Lastname']
+            match = (raw[:,0] == lastname)
             if not np.any(match):
-                print "%% WARNING: Auxiliary name %s not found"%n
+                print "%% WARNING: Auxiliary name %s not found"%lastname
                 continue
 
-            # Should allow first names in aux file...
-            firstnames = np.unique(data['Firstname'][data['Lastname']==n])
+            # Eventually deal with duplicate names... but for now throw an error.
+            firstnames = np.unique(data['Firstname'][data['Lastname']==lastname])
             if not len(firstnames) == 1:
                 print '%% ERROR: Non-unique last name; order by hand.'
                 for f in firstnames:

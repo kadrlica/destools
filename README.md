@@ -63,9 +63,11 @@ base="DES-2015-0109_author_list"
 csv="${base}.csv" 
 tex="${base}.tex" 
 pdf="${base}.pdf" 
+png="${base}.png" 
 
 authlist.py --sort -f --doc -j emulateapj $csv $tex 
 pdflatex $tex 
+convert $pdf $png
 open $pdf
 ```
 

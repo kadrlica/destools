@@ -64,6 +64,8 @@ journal2class = odict([
     ('prl','revtex'),
     ('prd','revtex'),
     ('mnras','mnras'),
+    ('elsevier','elsevier'),
+   
 ])
 defaults = dict(
     title = "DES Publication Title",
@@ -150,6 +152,30 @@ mnras_document = r"""
 
 \end{document}
 """
+
+### ELSEVIER ###
+elsevier_authlist = r"""
+%(authors)s
+
+%(affiliations)s
+"""
+
+elsevier_document = r"""
+\documentclass{elsarticle}
+\begin{document}
+\title{%(title)s}
+ 
+%(authlist)s
+ 
+\maketitle
+\begin{abstract}
+%(abstract)s
+\end{abstract}
+
+\end{document}
+"""
+
+
 
 if __name__ == "__main__":
     import argparse
@@ -297,8 +323,44 @@ if __name__ == "__main__":
             output = document%params
         else:
             output = authlist%params
-
         #output = template%params
+
+    if cls in ['elsevier']:
+        document = elsevier_document
+        authlist = elsevier_authlist
+        affilmark = r'%i,'
+        affiltext = r'\address[%i]{%s}'
+        for i,d in enumerate(data):
+            if d['Affiliation'] == '': 
+                print "%% WARNING: Blank affiliation for '%s'"%d['Authorname']
+            if d['Authorname'] == '': 
+                print "%% WARNING: Blank authorname for '%s %s'"%(d['Firstname'],d['Lastname'])
+
+            if (d['Affiliation'] not in affidict.keys()):
+                affidict[d['Affiliation']] = len(affidict.keys())
+            affidx = affidict[d['Affiliation']]
+            
+            if d['Authorname'] not in authdict.keys():
+                authdict[d['Authorname']] = [affidx]
+            else:
+                authdict[d['Authorname']].append(affidx)
+         
+        affiliations = []
+        authors=[]
+        for k,v in authdict.items():
+            author = r'\author[%s]{%s}'%(','.join([str(_v+opts.idx) for _v in v]),k)
+            authors.append(author)
+         
+        for k,v in affidict.items():
+            affiliation = affiltext%(v+opts.idx,k)
+            affiliations.append(affiliation)
+            
+        params = dict(defaults,authors='\n'.join(authors).strip(','),affiliations='\n'.join(affiliations))
+        if opts.doc:
+            params['authlist'] = authlist%params
+            output = document%params
+        else:
+            output = authlist%params
          
     if opts.outfile is None:
         print output

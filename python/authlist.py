@@ -313,7 +313,7 @@ if __name__ == "__main__":
             document = emulateapj_document
             authlist = aastex_authlist
             affilmark = r'\altaffilmark{%s},'
-            affiltext = r'\affil{$^%i$ %s}'
+            affiltext = r'\affil{$^{%i}$ %s}'
         elif cls == 'mnras':
             document = mnras_document
             authlist = mnras_authlist

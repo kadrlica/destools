@@ -1,23 +1,30 @@
 #!/usr/bin/env python
-"""
-A simple script for making latex author lists from the csv file produced by 
-the DES Publication Database.
+"""A simple script for making latex author lists from the csv file
+produced by the DES Publication Database (PubDB).
 
 Some usage notes:
-(1) By default, the script does not tier or sort the author list. The '--sort' option does not respect tiers.
-(2) An exact match is required to group affiliations. This should not be a problem for affiliations provided by the PubDB; however, be careful if you are editing affiliations by hand.
-(3) The script parses in quoted CSV format. Latex umlauts cause a problem (i.e., the Munich affiliation) and must be removed from the CSV file.
-(4) There are some authors in the database with blank affiliations. These need to be corrected by hand in the CSV file.
+(1) By default, the script does not tier or sort the author list. The
+'--sort' option does not respect tiers.
+(2) An exact match is required to group affiliations. This should not
+be a problem for affiliations provided by the PubDB; however, be
+careful if you are editing affiliations by hand.
+(3) The script parses quoted CSV format. Latex umlauts cause a problem
+(i.e., the Munich affiliation) and must be escaped in the CSV
+file. The PubDB should do this by default.
+(4) There are some authors in the database with blank
+affiliations. These need to be corrected by hand in the CSV file.
+
 """
 __author__ = "Alex Drlica-Wagner"
 __email__ = "kadrlica@fnal.gov"
+__version__ = "0.1.0"
 
 import csv
 import numpy as np
-import os
+import os,sys
 from collections import OrderedDict as odict
 
-#MUNICH HACK!!!
+#MUNICH HACK (shouldn't be necessary any more)
 HACK = odict([
     #('Ludwig-Maximilians-Universit',r'Department of Physics, Ludwig-Maximilians-Universit\"at, Scheinerstr.\ 1, 81679 M\"unchen, Germany')
 ])
@@ -25,7 +32,7 @@ HACK = odict([
 def hack_alphabetic(data,name='da Costa'):
     """ 
     Hack the alphabetic ordering to deal with lowercase 'da Costa'
-    This is terrible and should be fixed at the DB level.
+    This should be fixed at the DB level.
     """
     idx = data['Lastname'] == name
     hack  = np.sum(idx) > 0
@@ -57,19 +64,20 @@ def hack_alphabetic(data,name='da Costa'):
     return data
 
 journal2class = odict([
-    ('aastex','aastex'),
-    ('revtex','revtex'),
+    #('aastex','aastex'),
+    #('revtex','revtex'),
     ('apj','aastex'),
+    ('emulateapj','emulateapj'),
     ('aj','aastex'),
     ('prl','revtex'),
     ('prd','revtex'),
     ('mnras','mnras'),
     ('elsevier','elsevier'),
-   
 ])
+
 defaults = dict(
     title = "DES Publication Title",
-    abstract="This list is preliminary; the status is not yet ``ready to submit''.",
+    abstract=r"This is a sample document created by \texttt{authlist.py v%s}."%__version__,
     collaboration="The DES Collaboration"
 )
 
@@ -107,7 +115,23 @@ aastex_authlist = r"""
 
 aastex_document = r"""
 \documentclass[preprint]{aastex}
-\pagestyle{empty}
+
+\begin{document}
+\title{%(title)s}
+ 
+%(authlist)s
+ 
+\begin{abstract}
+%(abstract)s
+\end{abstract}
+\maketitle
+\end{document}
+"""
+
+### EMULATEAPJ ###
+emulateapj_document = r"""
+\documentclass[iop]{emulateapj}
+
 \begin{document}
 \title{%(title)s}
  
@@ -175,12 +199,12 @@ elsevier_document = r"""
 \end{document}
 """
 
-
-
 if __name__ == "__main__":
     import argparse
     description = __doc__
-    parser = argparse.ArgumentParser(description=description)
+    formatter=argparse.RawDescriptionHelpFormatter
+    parser = argparse.ArgumentParser(description=description,
+                                     formatter_class=formatter)
     parser.add_argument('infile',metavar='DES-XXXX-XXXX_author_list.csv',
                         help="Input csv file from DES PubDB")
     parser.add_argument('outfile',metavar='DES-XXXX-XXXX_author_list.tex',
@@ -191,12 +215,17 @@ if __name__ == "__main__":
                         help="Create standalone latex document.")
     parser.add_argument('-f','--force',action='store_true',
                         help="Force overwrite of output.")
-    parser.add_argument('-j','--journal',default='apj',choices=journal2class.keys(),
+    parser.add_argument('-i','--idx',default=1,type=int,
+                        help="Starting index for aastex author list \
+                        (useful for multi-collaboration papers).")
+    parser.add_argument('-j','--journal',default='apj',
+                        choices=sorted(journal2class.keys()),
                         help="Journal name or latex document class.")
     parser.add_argument('-s','--sort',action='store_true',
                         help="Alphabetize the author list (you know you want to...).")
-    parser.add_argument('-i','--idx',default=1,type=int,
-                        help="Starting index for aastex author list (useful for mult-collaboration papers; better to use revtex).")
+    parser.add_argument('-V','--version',action='version',
+                        version='%(prog)s '+__version__,
+                        help="Print version number and exit.")
     opts = parser.parse_args()
 
     # FIXME: Replace umlauts to make valid CSV file
@@ -220,9 +249,10 @@ if __name__ == "__main__":
 
     # Hack for Munich affiliation...
     for k,v in HACK.items():
-        print "% WARNING: Hacking '%s' ..."%k
+        print "%% WARNING: Hacking '%s' ..."%k
         select = (np.char.count(data['Affiliation'],k) > 0)
         data['Affiliation'][select] = v
+
 
     # Pre-sort the csv file by the auxiliary file
     if opts.aux is not None:
@@ -248,6 +278,7 @@ if __name__ == "__main__":
         order = np.vstack([order,raw])
         data = data[order[:,1].astype(int)]
                     
+    ### REVTEX ###
     if cls in ['revtex']:
         document = revtex_document
         authlist = revtex_authlist
@@ -270,19 +301,19 @@ if __name__ == "__main__":
                 author += r'\affiliation{%s}'%v+'\n'
             authors.append(author)
         params = dict(defaults,authors=''.join(authors))
-        if opts.doc:
-            params['authlist'] = authlist%params
-            output = document%params
-        else:
-            output = authlist%params
-        #output = template%params
 
-    if cls in ['aastex','mnras']:
+    ### AASTEX ###
+    if cls in ['aastex','mnras','emulateapj']:
         if cls == 'aastex':
             document = aastex_document
             authlist = aastex_authlist
             affilmark = r'\altaffilmark{%s},'
             affiltext = r'\altaffiltext{%i}{%s}'
+        elif cls == 'emulateapj':
+            document = emulateapj_document
+            authlist = aastex_authlist
+            affilmark = r'\altaffilmark{%s},'
+            affiltext = r'\affil{$^%i$ %s}'
         elif cls == 'mnras':
             document = mnras_document
             authlist = mnras_authlist
@@ -318,13 +349,8 @@ if __name__ == "__main__":
             affiliations.append(affiliation)
             
         params = dict(defaults,authors='\n'.join(authors).strip(','),affiliations='\n'.join(affiliations))
-        if opts.doc:
-            params['authlist'] = authlist%params
-            output = document%params
-        else:
-            output = authlist%params
-        #output = template%params
 
+    ### ELSEVIER ###
     if cls in ['elsevier']:
         document = elsevier_document
         authlist = elsevier_authlist
@@ -356,11 +382,14 @@ if __name__ == "__main__":
             affiliations.append(affiliation)
             
         params = dict(defaults,authors='\n'.join(authors).strip(','),affiliations='\n'.join(affiliations))
-        if opts.doc:
-            params['authlist'] = authlist%params
-            output = document%params
-        else:
-            output = authlist%params
+
+    output  = "%% Author list file generated with: authlist.py %s \n"%(__version__ )
+    output += "%% %s \n"%(' '.join(sys.argv))
+    if opts.doc:
+        params['authlist'] = authlist%params
+        output += document%params
+    else:
+        output += authlist%params
          
     if opts.outfile is None:
         print output

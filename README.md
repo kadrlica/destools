@@ -73,3 +73,5 @@ open $pdf
 
 The output should looks something like this:
 ![example_pdf](data/DES-2015-0109_author_list.png)
+
+One common usecase is to sort the builder list but not the first tier authors. This can be achieved by adding an auxiliary order file `--aux order.csv` specifying the ordering of the first tier authors and then alphabetically sorting the list with the `--sort` option.

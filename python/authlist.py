@@ -235,7 +235,7 @@ if __name__ == "__main__":
     lines = [l.replace(r'\"',r'\""') for l in open(opts.infile).readlines()]
     # Now fix the new files that we just broke with the previous line
     lines = [l.replace(r'\"""',r'\""') for l in lines] 
-    rows = [r for r in csv.reader(lines) if not r[0].startswith('#')]
+    rows = [r for r in csv.reader(lines,skipinitialspace=True) if not r[0].startswith('#')]
     data = np.rec.fromrecords(rows[1:],names=rows[0])
 
     if opts.sort: data = data[np.argsort(np.char.upper(data['Lastname']))]

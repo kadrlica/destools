@@ -23,6 +23,7 @@ import csv
 import numpy as np
 import os,sys
 from collections import OrderedDict as odict
+import copy
 
 #MUNICH HACK (shouldn't be necessary any more)
 HACK = odict([
@@ -51,7 +52,7 @@ def hack_alphabetic(data,name='da Costa'):
         new = np.delete(data,np.where(idx))
         # Count backward to try to be robust against resorted lists...
         for i,d in enumerate(new[::-1]):
-            if d['JoinedAsBuilder'] != 'True': continue
+            if d['JoinedAsBuilder'].lower() != 'true': continue
             if d['Lastname'].upper() < name.upper():
                 new = np.insert(new,len(new)-i,entry)
                 break
@@ -105,6 +106,8 @@ revtex_document = r"""
 
 ### AASTEX ###
 aastex_authlist = r"""
+\def\andname{}
+
 \author{
 %(authors)s
 \\ \vspace{0.2cm} (%(collaboration)s) \\
@@ -223,6 +226,9 @@ if __name__ == "__main__":
                         help="Journal name or latex document class.")
     parser.add_argument('-s','--sort',action='store_true',
                         help="Alphabetize the author list (you know you want to...).")
+    parser.add_argument('-sb','--sort-builder',action='store_true',
+                        help="Alphabetize the builder list.")
+
     parser.add_argument('-V','--version',action='version',
                         version='%(prog)s '+__version__,
                         help="Print version number and exit.")
@@ -238,7 +244,17 @@ if __name__ == "__main__":
     rows = [r for r in csv.reader(lines,skipinitialspace=True) if not r[0].startswith('#')]
     data = np.rec.fromrecords(rows[1:],names=rows[0])
 
-    if opts.sort: data = data[np.argsort(np.char.upper(data['Lastname']))]
+    if opts.sort_builder:
+        build = (np.char.lower(data['JoinedAsBuilder']) == 'true')
+        builder = data[build]
+        #idx = np.argsort(np.char.upper(builder['Lastname']))
+        idx = np.lexsort((np.char.upper(builder['Firstname']),
+                          np.char.upper(builder['Lastname'])))
+        builder = builder[idx]
+        nonbuilder = data[~build]
+        data = np.hstack([nonbuilder,builder])
+    if opts.sort: 
+        data = data[np.argsort(np.char.upper(data['Lastname']))]
 
     # FIXME: Is this still necessary?
     data = hack_alphabetic(data, 'da Costa')
@@ -253,10 +269,14 @@ if __name__ == "__main__":
         select = (np.char.count(data['Affiliation'],k) > 0)
         data['Affiliation'][select] = v
 
-
     # Pre-sort the csv file by the auxiliary file
     if opts.aux is not None:
         aux = [r for r in csv.DictReader(open(opts.aux),['Lastname','Firstname'])]
+        if len(np.unique(aux)) != len(aux):
+            print '% ERROR: Non-unique names in aux file.'
+            print open(opts.aux).read()
+            raise Exception()
+            
         raw = np.array(zip(data['Lastname'],range(len(data))))
         order = np.empty((0,2),dtype=raw.dtype)
         for r in aux:
